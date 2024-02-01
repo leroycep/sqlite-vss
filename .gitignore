@@ -34,3 +34,6 @@ _build/
 *.parquet
 
 .cache
+
+zig-cache/
+zig-out/
