@@ -59,7 +59,7 @@ pub fn build(b: *std.Build) !void {
         },
     });
     vector.linkLibrary(sqlite.artifact("sqlite3"));
-    vector.addIncludePath(.{ .path = "vendor/json/single_include/" });
+    vector.addIncludePath(.{ .path = "vendor/json/" });
     vector.linkLibCpp();
     const install_vector = b.addInstallArtifact(vector, .{ .dest_sub_path = "vector0.so" });
     b.getInstallStep().dependOn(&install_vector.step);
