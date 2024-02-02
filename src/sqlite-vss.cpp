@@ -16,6 +16,7 @@ SQLITE_EXTENSION_INIT1
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIVFPQ.h>
 #include <faiss/impl/AuxIndexStructures.h>
+#include <faiss/impl/FaissException.h>
 #include <faiss/impl/IDSelector.h>
 #include <faiss/impl/io.h>
 #include <faiss/index_factory.h>
