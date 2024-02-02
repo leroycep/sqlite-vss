@@ -13,9 +13,16 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    const faiss = b.dependency("faiss", .{
+    const faiss_static = b.dependency("faiss", .{
         .target = target,
         .optimize = optimize,
+        .linkage = .static,
+    });
+
+    const faiss_dynamic = b.dependency("faiss", .{
+        .target = target,
+        .optimize = optimize,
+        .linkage = .dynamic,
     });
 
     const vss_h = b.addConfigHeader(.{ .style = .{ .cmake = .{ .path = "src/sqlite-vss.h.in" } } }, .{
@@ -26,41 +33,91 @@ pub fn build(b: *std.Build) !void {
     });
     const vector_h = b.addConfigHeader(.{ .style = .{ .cmake = .{ .path = "src/sqlite-vector.h.in" } } }, .{});
 
-    // vss library
-    const vss = b.addSharedLibrary(.{
-        .name = "vss0",
-        .target = target,
-        .optimize = optimize,
-    });
-    vss.addConfigHeader(vss_h);
-    vss.addConfigHeader(vector_h);
-    vss.addCSourceFiles(.{
-        .files = &.{
-            "src/sqlite-vss.cpp",
-        },
-    });
-    vss.linkLibrary(sqlite.artifact("sqlite3"));
-    vss.linkLibrary(faiss.artifact("faiss"));
-    vss.linkLibCpp();
-    const install_vss = b.addInstallArtifact(vss, .{ .dest_sub_path = "vss0.so" });
-    b.getInstallStep().dependOn(&install_vss.step);
+    // shared libraries
 
     // vector library
-    const vector = b.addSharedLibrary(.{
-        .name = "vector0",
+    const vector_dynamic = b.addSharedLibrary(.{
+        .name = "vector_dynamic",
         .target = target,
         .optimize = optimize,
     });
-    vector.addConfigHeader(vss_h);
-    vector.addConfigHeader(vector_h);
-    vector.addCSourceFiles(.{
+    vector_dynamic.addConfigHeader(vss_h);
+    vector_dynamic.addConfigHeader(vector_h);
+    vector_dynamic.installConfigHeader(vector_h, .{});
+    vector_dynamic.addCSourceFiles(.{
         .files = &.{
             "src/sqlite-vector.cpp",
         },
     });
-    vector.linkLibrary(sqlite.artifact("sqlite3"));
-    vector.addIncludePath(.{ .path = "vendor/json/" });
-    vector.linkLibCpp();
-    const install_vector = b.addInstallArtifact(vector, .{ .dest_sub_path = "vector0.so" });
-    b.getInstallStep().dependOn(&install_vector.step);
+    vector_dynamic.linkLibrary(sqlite.artifact("sqlite3"));
+    vector_dynamic.addIncludePath(.{ .path = "vendor/json/" });
+    vector_dynamic.linkLibCpp();
+    const install_vector_dynamic = b.addInstallArtifact(vector_dynamic, .{
+        .dest_dir = .{ .override = .bin },
+        .dest_sub_path = "vector0.so",
+    });
+    b.getInstallStep().dependOn(&install_vector_dynamic.step);
+
+    // vss library
+    const vss_dynamic = b.addSharedLibrary(.{
+        .name = "vss_dynamic",
+        .target = target,
+        .optimize = optimize,
+    });
+    vss_dynamic.addConfigHeader(vss_h);
+    vss_dynamic.installConfigHeader(vss_h, .{});
+    vss_dynamic.addConfigHeader(vector_h);
+    vss_dynamic.addCSourceFiles(.{
+        .files = &.{
+            "src/sqlite-vss.cpp",
+        },
+    });
+    vss_dynamic.linkLibrary(sqlite.artifact("sqlite3"));
+    vss_dynamic.linkLibrary(faiss_dynamic.artifact("faiss"));
+    vss_dynamic.linkLibCpp();
+    const install_vss_dynamic = b.addInstallArtifact(vss_dynamic, .{
+        .dest_dir = .{ .override = .bin },
+        .dest_sub_path = "vss0.so",
+    });
+    b.getInstallStep().dependOn(&install_vss_dynamic.step);
+
+    // static libraries
+
+    // vector library
+    const vector_static = b.addStaticLibrary(.{
+        .name = "vector",
+        .target = target,
+        .optimize = optimize,
+    });
+    vector_static.addConfigHeader(vss_h);
+    vector_static.addConfigHeader(vector_h);
+    vector_static.installConfigHeader(vector_h, .{});
+    vector_static.addCSourceFiles(.{
+        .files = &.{
+            "src/sqlite-vector.cpp",
+        },
+    });
+    vector_static.linkLibrary(sqlite.artifact("sqlite3"));
+    vector_static.addIncludePath(.{ .path = "vendor/json/" });
+    vector_static.linkLibCpp();
+    b.installArtifact(vector_static);
+
+    // vss library
+    const vss_static = b.addStaticLibrary(.{
+        .name = "vss",
+        .target = target,
+        .optimize = optimize,
+    });
+    vss_static.addConfigHeader(vss_h);
+    vss_static.installConfigHeader(vss_h, .{});
+    vss_static.addConfigHeader(vector_h);
+    vss_static.addCSourceFiles(.{
+        .files = &.{
+            "src/sqlite-vss.cpp",
+        },
+    });
+    vss_static.linkLibrary(sqlite.artifact("sqlite3"));
+    vss_static.linkLibrary(faiss_static.artifact("faiss"));
+    vss_static.linkLibCpp();
+    b.installArtifact(vss_static);
 }
